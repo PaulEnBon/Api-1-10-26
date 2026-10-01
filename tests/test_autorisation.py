@@ -165,3 +165,12 @@ def test_reinitialisation_restaure_le_catalogue(client, entetes_admin):
 
     assert reponse.status_code == 200
     assert client.get(f"{BASE}/jeux").json()["total"] == 8
+
+
+def test_reinitialisation_attribue_les_jeux_a_l_administrateur(client, entetes, entetes_admin):
+    """`entetes` crée un lecteur *avant* l'administrateur : c'est le premier
+    compte de la table, et il ne doit rien recevoir."""
+    client.post(f"{BASE}/admin/reinitialiser", headers=entetes_admin)
+
+    assert client.get(f"{BASE}/moi/jeux", headers=entetes_admin).json()["total"] == 8
+    assert client.get(f"{BASE}/moi/jeux", headers=entetes).json()["total"] == 0

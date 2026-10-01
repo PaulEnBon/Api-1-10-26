@@ -4,6 +4,8 @@ On teste **nos** règles : validateurs, normalisation, champs calculés. Pas le
 fonctionnement de Pydantic lui-même.
 """
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -87,6 +89,33 @@ def test_mise_a_jour_distingue_absent_et_none():
 
     assert partiel.model_dump(exclude_unset=True) == {"note": 10}
     assert partiel.model_dump()["titre"] is None
+
+
+@pytest.mark.parametrize(
+    "champs",
+    [
+        {"note": 11},
+        {"titre": "   "},
+        {"titre": None},
+        {"genre": None},
+        {"note": None},
+        {"annee": date.today().year + 2},
+        {"note": 10, "annee": date.today().year + 1},
+    ],
+)
+def test_mise_a_jour_applique_les_memes_regles_que_la_creation(champs):
+    """Sans cela, un PATCH contournerait la validation de la création."""
+    with pytest.raises(ValidationError):
+        JeuMiseAJour(**champs)
+
+
+def test_mise_a_jour_normalise_les_tags():
+    assert JeuMiseAJour(tags=["  Indé ", "indé"]).tags == ["indé"]
+
+
+def test_mise_a_jour_accepte_null_sur_un_champ_facultatif():
+    """`code_editeur` et `editeur_id` sont nullables : `null` les efface."""
+    assert JeuMiseAJour(editeur_id=None).model_dump(exclude_unset=True) == {"editeur_id": None}
 
 
 @pytest.mark.parametrize(

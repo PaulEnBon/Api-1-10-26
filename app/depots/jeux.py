@@ -27,8 +27,10 @@ def _requete_filtree(
     if recherche:
         # `ilike` ignore la casse. La valeur reste un paramètre lié : ce n'est
         # pas une injection SQL. En revanche, un `%` saisi devient un joker.
-        terme = recherche.replace("%", r"\%").replace("_", r"\_")
-        requete = requete.where(Jeu.titre.ilike(f"%{terme}%"))
+        # `escape` est obligatoire : SQLite n'a aucun caractère d'échappement
+        # par défaut, et `\%` y chercherait littéralement un antislash.
+        terme = recherche.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+        requete = requete.where(Jeu.titre.ilike(f"%{terme}%", escape="\\"))
     if proprietaire_id is not None:
         requete = requete.where(Jeu.proprietaire_id == proprietaire_id)
 
@@ -48,7 +50,8 @@ def lister(
     requete = _requete_filtree(genre, note_min, recherche, proprietaire_id)
 
     colonne = {"titre": Jeu.titre, "note": Jeu.note, "annee": Jeu.annee}[tri]
-    ordre = colonne.desc() if tri == "annee" else colonne.asc()
+    # Les titres de A à Z ; les mieux notés et les plus récents d'abord.
+    ordre = colonne.asc() if tri == "titre" else colonne.desc()
 
     # `selectinload` : deux requêtes au total, quel que soit le nombre de jeux.
     # Sans lui, une requête par jeu pour charger l'éditeur — le problème N+1.
@@ -94,7 +97,7 @@ def genres_distincts(session: Session) -> list[str]:
 def similaires(session: Session, jeu: Jeu, limite: int = 20) -> list[Jeu]:
     requete = (
         select(Jeu)
-        .where(Jeu.genre == jeu.genre)
+        .where(Jeu.genre == jeu.genre, Jeu.id != jeu.id)
         .order_by(Jeu.note.desc(), Jeu.titre)
         .limit(limite)
     )
@@ -165,7 +168,8 @@ def statistiques(session: Session) -> dict:
     return {
         "nombre": nombre or 0,
         # `func.avg` renvoie un Decimal sur PostgreSQL : le `float()` est requis.
-        "moyenne": round(float(moyenne), 2),
+        # Et NULL sur une table vide : `float(None)` lèverait une erreur 500.
+        "moyenne": round(float(moyenne), 2) if moyenne is not None else 0.0,
         "meilleure_note": meilleure,
         "par_genre": {genre: compte for genre, compte in par_genre},
     }

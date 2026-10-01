@@ -193,7 +193,9 @@ def test_voisins(session, catalogue):
     premier = service.voisins(session, catalogue[0].id)
     dernier = service.voisins(session, catalogue[-1].id)
 
+    assert premier["precedent"] is None
     assert premier["suivant"].id == catalogue[1].id
+    assert dernier["precedent"].id == catalogue[-2].id
     assert dernier["suivant"] is None
 
 

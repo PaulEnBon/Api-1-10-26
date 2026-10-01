@@ -54,6 +54,39 @@ class EditeurEntree(BaseModel):
         return nettoye
 
 
+def _nettoyer_titre(valeur: str) -> str:
+    nettoye = valeur.strip()
+    if not nettoye:
+        raise ValueError("Le titre ne peut pas être vide")
+    return nettoye
+
+
+def _verifier_annee(valeur: int) -> int:
+    if valeur > date.today().year + 1:
+        raise ValueError("L'année ne peut pas dépasser l'année prochaine")
+    return valeur
+
+
+def _normaliser_tags(valeurs: list[str]) -> list[str]:
+    """Minuscules, sans doublon, *en conservant l'ordre*.
+
+    `list(set(...))` serait plus court mais perdrait l'ordre.
+    """
+    vus: set[str] = set()
+    resultat: list[str] = []
+    for tag in valeurs:
+        propre = tag.strip().lower()
+        if propre and propre not in vus:
+            vus.add(propre)
+            resultat.append(propre)
+    return resultat
+
+
+def _verifier_note_annee(note: int | None, annee: int | None) -> None:
+    if note == 10 and annee is not None and annee > date.today().year:
+        raise ValueError("Un jeu non sorti ne peut pas avoir la note maximale")
+
+
 class JeuBase(BaseModel):
     """Les contraintes sont écrites une seule fois, et héritées."""
 
@@ -81,39 +114,22 @@ class JeuBase(BaseModel):
 
         L'oublier remplace silencieusement le champ par `None`.
         """
-        nettoye = valeur.strip()
-        if not nettoye:
-            raise ValueError("Le titre ne peut pas être vide")
-        return nettoye
+        return _nettoyer_titre(valeur)
 
     @field_validator("annee")
     @classmethod
     def annee_raisonnable(cls, valeur: int) -> int:
-        if valeur > date.today().year + 1:
-            raise ValueError("L'année ne peut pas dépasser l'année prochaine")
-        return valeur
+        return _verifier_annee(valeur)
 
     @field_validator("tags")
     @classmethod
     def normaliser_tags(cls, valeurs: list[str]) -> list[str]:
-        """Minuscules, sans doublon, *en conservant l'ordre*.
-
-        `list(set(...))` serait plus court mais perdrait l'ordre.
-        """
-        vus: set[str] = set()
-        resultat: list[str] = []
-        for tag in valeurs:
-            propre = tag.strip().lower()
-            if propre and propre not in vus:
-                vus.add(propre)
-                resultat.append(propre)
-        return resultat
+        return _normaliser_tags(valeurs)
 
     @model_validator(mode="after")
     def coherence_note_annee(self):
         """Une règle qui porte sur deux champs exige `model_validator`."""
-        if self.note == 10 and self.annee > date.today().year:
-            raise ValueError("Un jeu non sorti ne peut pas avoir la note maximale")
+        _verifier_note_annee(self.note, self.annee)
         return self
 
 
@@ -129,15 +145,49 @@ class JeuCreation(JeuBase):
 
 class JeuMiseAJour(BaseModel):
     """Tout facultatif — n'hérite donc pas de `JeuBase`, dont les champs sont
-    obligatoires. Duplication assumée, et plus lisible qu'une génération."""
+    obligatoires. Duplication assumée, et plus lisible qu'une génération.
+
+    Les règles, elles, ne sont pas dupliquées : ce sont les mêmes fonctions
+    que pour la création. Sinon un PATCH contournerait la validation.
+    """
 
     titre: str | None = Field(default=None, min_length=1, max_length=100)
     genre: Genre | None = None
-    note: int | None = Field(default=None, ge=0, le=100)
+    note: int | None = Field(default=None, ge=0, le=10)
     annee: int | None = Field(default=None, ge=1970, le=2030)
     tags: list[str] | None = Field(default=None, max_length=10)
     code_editeur: str | None = Field(default=None, pattern=r"^[A-Z]{3}-\d{4}$")
     editeur_id: int | None = None
+
+    @field_validator("titre", "genre", "note", "annee", "tags")
+    @classmethod
+    def refuser_null(cls, valeur: object) -> object:
+        """Omettre un champ le conserve ; l'envoyer à `null` viderait une
+        colonne obligatoire. Les valeurs par défaut ne passent pas par les
+        validateurs : `None` ici signifie que le client l'a envoyé."""
+        if valeur is None:
+            raise ValueError("Ce champ ne peut pas valoir null ; omettez-le pour le conserver")
+        return valeur
+
+    @field_validator("titre")
+    @classmethod
+    def titre_non_vide(cls, valeur: str) -> str:
+        return _nettoyer_titre(valeur)
+
+    @field_validator("annee")
+    @classmethod
+    def annee_raisonnable(cls, valeur: int) -> int:
+        return _verifier_annee(valeur)
+
+    @field_validator("tags")
+    @classmethod
+    def normaliser_tags(cls, valeurs: list[str]) -> list[str]:
+        return _normaliser_tags(valeurs)
+
+    @model_validator(mode="after")
+    def coherence_note_annee(self):
+        _verifier_note_annee(self.note, self.annee)
+        return self
 
 
 class NoteEntree(BaseModel):

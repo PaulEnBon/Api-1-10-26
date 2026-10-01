@@ -203,6 +203,80 @@ def test_statistiques(client, entetes):
     assert corps["par_genre"] == {"Party": 1, "Roguelike": 1}
 
 
+def test_statistiques_sur_un_catalogue_vide(client):
+    """`AVG` renvoie NULL sur une table vide : ce n'est pas une erreur 500."""
+    reponse = client.get(f"{BASE}/jeux/statistiques")
+
+    assert reponse.status_code == 200
+    assert reponse.json() == {
+        "nombre": 0,
+        "moyenne": 0.0,
+        "meilleure_note": None,
+        "par_genre": {},
+    }
+
+
+def test_recommandes_n_est_pas_pris_pour_un_identifiant(client, entetes):
+    creer_jeu(client, entetes, titre="Among Us", genre="Party", note=6)
+    creer_jeu(client, entetes, titre="Hades", genre="Roguelike", note=9)
+    creer_jeu(client, entetes, titre="Portal 2", genre="Réflexion", note=10, annee=2011)
+
+    reponse = client.get(f"{BASE}/jeux/recommandes")
+
+    assert reponse.status_code == 200
+    assert [jeu["titre"] for jeu in reponse.json()] == ["Portal 2", "Hades"]
+
+
+def test_similaires_exclut_le_jeu_lui_meme(client, entetes):
+    seul = creer_jeu(client, entetes, titre="Hades", genre="Roguelike")
+    creer_jeu(client, entetes, titre="Celeste", genre="Plateforme")
+
+    reponse = client.get(f"{BASE}/jeux/{seul['id']}/similaires")
+
+    assert reponse.status_code == 200
+    assert reponse.json() == []
+
+
+def test_recherche_d_un_caractere_joker(client, entetes):
+    """Un `%` saisi est cherché tel quel, pas interprété comme un joker."""
+    creer_jeu(client, entetes, titre="100% Orange Juice", genre="Party")
+    creer_jeu(client, entetes, titre="Hades", genre="Roguelike")
+
+    corps = client.get(f"{BASE}/jeux", params={"recherche": "0%"}).json()
+
+    assert [jeu["titre"] for jeu in corps["elements"]] == ["100% Orange Juice"]
+
+
+def test_patch_note_hors_bornes_refusee(client, entetes):
+    cree = creer_jeu(client, entetes)
+    reponse = client.patch(f"{BASE}/jeux/{cree['id']}", json={"note": 50}, headers=entetes)
+
+    assert reponse.status_code == 422
+
+
+def test_patch_null_sur_un_champ_obligatoire_refuse(client, entetes):
+    cree = creer_jeu(client, entetes)
+    reponse = client.patch(f"{BASE}/jeux/{cree['id']}", json={"titre": None}, headers=entetes)
+
+    assert reponse.status_code == 422
+    assert client.get(f"{BASE}/jeux/{cree['id']}").json()["titre"] == "Celeste"
+
+
+def test_creation_en_lot_tout_ou_rien(client, entetes):
+    """Un doublon dans le lot : rien n'est créé, pas même les premiers."""
+    reponse = client.post(
+        f"{BASE}/jeux/lot",
+        json=[
+            {"titre": "Hades", "genre": "Roguelike", "note": 9, "annee": 2020},
+            {"titre": "hades", "genre": "RPG", "note": 8, "annee": 2015},
+        ],
+        headers=entetes,
+    )
+
+    assert reponse.status_code == 409
+    assert client.get(f"{BASE}/jeux").json()["total"] == 0
+
+
 def test_editeur_imbrique_dans_la_reponse(client, entetes, editeur):
     cree = creer_jeu(client, entetes, editeur_id=editeur.id)
 

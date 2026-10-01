@@ -181,8 +181,13 @@ def test_mes_jeux_ne_montre_que_les_siens(client, deux_utilisateurs):
         headers=entetes_a,
     )
 
-    assert len(client.get(f"{BASE}/moi/jeux", headers=entetes_a).json()["elements"]) == 1
-    assert client.get(f"{BASE}/moi/jeux", headers=entetes_b).json()["elements"] == []
+    page_a = client.get(f"{BASE}/moi/jeux", headers=entetes_a).json()
+    page_b = client.get(f"{BASE}/moi/jeux", headers=entetes_b).json()
+
+    assert (len(page_a["elements"]), page_a["total"]) == (1, 1)
+    # Le total suit le même filtre que les éléments : sinon B verrait une
+    # page vide annoncée comme « 1 élément, 1 page ».
+    assert (page_b["elements"], page_b["total"], page_b["pages_totales"]) == ([], 0, 0)
 
 
 def test_deconnexion(client, entetes):

@@ -68,6 +68,13 @@ def statistiques(session: SessionDep):
     return service.statistiques(session)
 
 
+# Les chemins fixes avant `/{jeu_id}` : les routes sont essayées dans l'ordre,
+# et `/jeux/recommandes` serait sinon pris pour un identifiant — un 422.
+@routeur.get("/recommandes", response_model=list[JeuResume], summary="Les mieux notés")
+def lister_recommandes(session: SessionDep, note_minimale: Annotated[int, Query(ge=0, le=10)] = 8):
+    return service.recommandes(session, note_minimale)
+
+
 @routeur.get(
     "/{jeu_id}",
     response_model=JeuSortie,
@@ -104,11 +111,6 @@ def lire_voisins(session: SessionDep, jeu_id: int):
 )
 def lire_historique(session: SessionDep, jeu_id: int):
     return service.historique(session, jeu_id)
-
-
-@routeur.get("/recommandes", response_model=list[JeuResume], summary="Les mieux notés")
-def lister_recommandes(session: SessionDep, note_minimale: Annotated[int, Query(ge=0, le=10)] = 8):
-    return service.recommandes(session, note_minimale)
 
 
 # --- Écriture (authentification requise) ------------------------------------

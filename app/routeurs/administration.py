@@ -9,7 +9,8 @@ Ce qui est appliqué globalement ne peut pas être omis individuellement.
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.dependances import PaginationDep, SessionDep, administrateur
+from app.dependances import AdminDep, PaginationDep, SessionDep, administrateur
+from app.depots import editeurs as depot_editeurs
 from app.depots import jeux as depot_jeux
 from app.depots import utilisateurs as depot_utilisateurs
 from app.journalisation import logger
@@ -82,25 +83,27 @@ def supprimer_par_genre(session: SessionDep, genre: str | None = Query(default=N
     status_code=status.HTTP_200_OK,
     summary="Réinitialiser le catalogue",
 )
-def reinitialiser(session: SessionDep):
+def reinitialiser(session: SessionDep, admin: AdminDep):
     """Très pratique en développement, dangereuse en production.
 
     Une route capable de détruire toutes les données ne reste jamais ouverte :
     c'est pourquoi elle vit dans le routeur protégé.
+
+    Les jeux recréés appartiennent à l'administrateur qui appelle — pas au
+    premier compte de la table, qui peut être un simple lecteur.
     """
     from app.donnees_initiales import JEUX_INITIAUX
     from app.modeles.jeux import JeuCreation
 
     supprimes = depot_jeux.vider(session)
 
-    administrateur_courant = depot_utilisateurs.lister(session, limite=1)
-    auteur = administrateur_courant[0] if administrateur_courant else None
-
     crees = 0
-    if auteur is not None:
-        for donnees in JEUX_INITIAUX:
-            service_jeux.creer(session, JeuCreation(**donnees), auteur)
-            crees += 1
+    for donnees in JEUX_INITIAUX:
+        # Comme `scripts/peupler.py` : l'éditeur est relié s'il existe en base.
+        editeur = depot_editeurs.par_nom(session, donnees["editeur"])
+        entree = JeuCreation(**donnees, editeur_id=editeur.id if editeur else None)
+        service_jeux.creer(session, entree, admin)
+        crees += 1
 
     logger.warning("Catalogue réinitialisé : %d supprimés, %d créés", supprimes, crees)
     return Message(message=f"Données réinitialisées : {crees} jeu(x)")

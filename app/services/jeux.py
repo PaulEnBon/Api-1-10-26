@@ -38,7 +38,7 @@ def lister(
     elements = depot.lister(
         session, genre, note_min, recherche, proprietaire_id, tri, saut, limite
     )
-    total = depot.compter(session, genre, note_min, recherche)
+    total = depot.compter(session, genre, note_min, recherche, proprietaire_id)
     return elements, total
 
 
@@ -76,7 +76,9 @@ def voisins(session: Session, jeu_id: int) -> dict[str, Jeu | None]:
         raise JeuIntrouvable(jeu_id)
 
     index = identifiants.index(jeu_id)
-    precedent = depot.par_id(session, identifiants[index - 1]) if index >= 0 else None
+    # `index > 0` et non `>= 0` : `identifiants[-1]` est le *dernier* élément,
+    # le premier jeu aurait le dernier pour précédent.
+    precedent = depot.par_id(session, identifiants[index - 1]) if index > 0 else None
     suivant = (
         depot.par_id(session, identifiants[index + 1])
         if index < len(identifiants) - 1
@@ -129,6 +131,20 @@ def creer(session: Session, entree: JeuCreation, utilisateur: Utilisateur) -> Je
 def creer_lot(
     session: Session, entrees: list[JeuCreation], utilisateur: Utilisateur
 ) -> list[Jeu]:
+    """Tout le lot est vérifié avant d'écrire quoi que ce soit.
+
+    Sans cela, un doublon en troisième position laisserait les deux premiers
+    jeux en base derrière une réponse 409 : le client croirait que rien n'a
+    été créé.
+    """
+    titres_vus: set[str] = set()
+    for entree in entrees:
+        if entree.titre.lower() in titres_vus:
+            raise TitreDejaUtilise(entree.titre)
+        titres_vus.add(entree.titre.lower())
+        _verifier_editeur(session, entree.editeur_id)
+        _verifier_titre_libre(session, entree.titre)
+
     return [creer(session, entree, utilisateur) for entree in entrees]
 
 
@@ -176,8 +192,8 @@ def modifier(
         _verifier_editeur(session, donnees["editeur_id"])
     if donnees.get("titre"):
         _verifier_titre_libre(session, donnees["titre"], sauf_id=jeu.id)
-    if isinstance(donnees.get("genre"), object) and donnees.get("genre") is not None:
-        donnees["genre"] = getattr(donnees["genre"], "value", donnees["genre"])
+    if entree.genre is not None:
+        donnees["genre"] = entree.genre.value
 
     return _appliquer(session, jeu, donnees, utilisateur)
 
