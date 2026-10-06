@@ -131,7 +131,7 @@ Le nouveau README a été testé par un autre groupe sur une machine vierge
 (#<issue de l'échange>) ; chaque blocage signalé est corrigé dans cette PR.
 
 ## Changements
-- Titre et phrase de présentation, prérequis (Python 3.12).
+- Titre et phrase de présentation, prérequis (Python 3.12 ou 3.13).
 - Démarrage rapide en cinq étapes, en SQLite, avec le résultat attendu,
   les variantes Windows et l'erreur la plus probable.
 - Configuration : les 10 variables de `app/config.py`, avec leur rôle, si
@@ -283,7 +283,7 @@ Chaque membre apparaît au moins une fois.
 | Critère | Où c'est dans notre README |
 |---|---|
 | On comprend ce que c'est en trente secondes | titre et deux phrases d'ouverture |
-| Les prérequis donnent des versions précises | Python 3.12 ; PostgreSQL 16 pour Docker |
+| Les prérequis donnent des versions précises | Python 3.12 ou 3.13 ; PostgreSQL 16 pour Docker |
 | Commandes dans l'ordre, et le résultat attendu | « Démarrage rapide », 5 étapes, puis « Résultat attendu » |
 | Variables listées, sans valeur qui ressemble à un secret | tableau « Configuration » ; `CLE_SECRETE=collez-ici-la-cle-generee` |
 | Utilisation et tests : quoi appeler, comment vérifier | 3 requêtes avec leur réponse ; `pytest` et `ruff` avec le résultat attendu |

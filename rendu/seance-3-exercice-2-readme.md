@@ -1,7 +1,7 @@
 # Séance 3 · Exercice 2 — Le README
 
 > Le nouveau `README.md` est à la racine de cette branche. Il a été suivi à la
-> lettre le 05/10/2026 dans un dossier vide (clone neuf, Python 3.12.3) :
+> lettre le 05/10/2026 dans un dossier vide (clone neuf, Python 3.12.3, puis 3.13.14 le 06/10) :
 > installation, `.env` en SQLite, `scripts/peupler.py`, `fastapi dev`, `/docs`,
 > connexion, création d'un jeu, scripts, `pytest` et `ruff`. Tout fonctionne.
 > Le schéma Mermaid a été rendu avec `mermaid-cli` : la syntaxe est valide.
@@ -58,7 +58,7 @@ Les trois plus graves :
 | Section de la partie 4 | Où | Contenu |
 |---|---|---|
 | Titre et une phrase | en tête | ce que c'est, pour qui |
-| Prérequis | `## Prérequis` | Python 3.12, Git ; aucune base à installer |
+| Prérequis | `## Prérequis` | Python 3.12 ou 3.13, Git ; aucune base à installer |
 | Démarrage rapide | `## Démarrage rapide` | 5 étapes testées, variantes Windows, résultat attendu, erreur la plus probable |
 | Configuration | `## Configuration` | les 10 variables de `app/config.py` : rôle, obligatoire, défaut |
 | Utilisation | `## Utilisation` | lien vers `/docs`, 3 requêtes avec leur réponse, les scripts |

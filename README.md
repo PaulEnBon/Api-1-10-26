@@ -6,8 +6,10 @@ SQLAlchemy et Pydantic.
 
 ## Prérequis
 
-- **Python 3.12**, la version utilisée par la CI et l'image Docker.
-  Vérifiez avec `python3.12 --version` (Windows : `py -3.12 --version`).
+- **Python 3.12 ou 3.13**. La CI et l'image Docker utilisent 3.12.
+  Vérifiez avec `python3 --version` (Windows : `py --version`). S'il affiche
+  une autre version, remplacez `python3` par `python3.12` ou `python3.13` à
+  l'étape 1 (Windows : `py -3.12`).
 - **Git**.
 - Aucune base à installer pour démarrer : SQLite est fourni avec Python.
   PostgreSQL 16 n'est utile que pour la variante Docker.
@@ -18,7 +20,7 @@ Toutes les commandes se lancent depuis la racine du dépôt cloné.
 
 ```bash
 # 1. Créer et activer l'environnement virtuel
-python3.12 -m venv .venv         # Windows : py -3.12 -m venv .venv
+python3 -m venv .venv            # Windows : py -m venv .venv
 source .venv/bin/activate        # Windows : .venv\Scripts\activate
 
 # 2. Installer les dépendances (application, tests et linter)
@@ -46,7 +48,7 @@ fastapi dev app/main.py
 ```
 
 Une fois l'environnement activé, `(.venv)` précède l'invite du terminal, et
-`python` désigne Python 3.12 sur tous les systèmes.
+`python` désigne la version de l'environnement sur tous les systèmes.
 
 Résultat attendu :
 
